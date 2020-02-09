@@ -1,0 +1,87 @@
+---
+title: "Interactive mapping"
+author: "Mor ndiaye"
+date: "09/02/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Conception de Carte interactive sur la base des données SOTER
+
+- Tout d'abord nous allons procedé à l'importation des données et libraries necessaires
+
+libraries
+
+```{r,message=FALSE}
+library(leaflet)
+library(RColorBrewer)
+library(tidyverse)
+library(sp)
+library(rgdal)
+library(raster)
+
+```
+
+
+Importatios des données
+```{r,message=FALSE,warning=FALSE,results='hide'}
+final<-read_csv2("donnees soter.csv")
+```
+- Nettoyage du fichier importer
+```{r}
+final<-final%>%dplyr::filter(!is.na(LNGI),!is.na(LATI),!is.na(total_carbone))
+
+```
+
+- Apercu sur les données
+```{r}
+knitr::kable(head(final,4),caption = "table reduite des donées importées")
+```
+
+- Transformation du dataframe importé  pour obtenir  spatial dataframe
+```{r}
+coordinates(final)<-~LNGI+LATI
+```
+
+- Apercu sur les changements opérés
+
+```{r}
+print(final)
+```
+
+- Modifier la projection
+
+```{r}
+proj4string(final)<-crs("+init=epsg:4326")
+```
+
+### Map of senegal with data_set overlayed
+
+- Construction du popup qui s'affiche en cliquant sur le point echantillonnés
+
+```{r}
+pas<-paste0("<strong> Profile ID : </strong>",final$PRID,"<br>\n <strong>Carbone Total (%) : </strong>",round(final$total_carbone,3),"<br> \n <strong> Azote Total (%): </stong>",round(final$total_azote,3),"<br>\n<strong> CEC (meq/100g) : </strong>",round(final$CECS,3),"<br>\n<strong> Epaisseur : </stong>",round(final$epais_hor,3),"<br>\n<strong> Munsell Code : </strong>",final$Munshell_col_hud)
+```
+
+- Construire la rampe de couleurs
+
+```{r}
+palette <- colorQuantile("YlOrBr", domain = final$OC)
+```
+
+- Affichage de la carte interactive  propement dit
+
+```{r}
+leaflet() %>%
+  addProviderTiles("Esri.WorldImagery") %>%
+  addCircleMarkers(data = final, color = ~palette(total_carbone),
+                   popup = pas) %>%
+  addLegend("bottomright", pal = palette,
+            values = final$total_carbone, title = "Soil Organic Carbon (%) quantiles",
+            opacity = 0.8)
+```
+
+
